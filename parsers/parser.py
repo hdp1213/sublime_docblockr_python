@@ -430,7 +430,7 @@ class PythonParser:
         """
         variables = []
         contents + '\n'
-        regex = re.compile(r'^\s*((?:(?!from |import |def |class |@).)+$)', re.MULTILINE)
+        regex = re.compile(r'^\s*((?:(?!from |import |def |class |if |for |while |@).)+$)', re.MULTILINE)
         matches = re.findall(regex, contents)
 
         if len(matches) == 0:
@@ -568,7 +568,7 @@ class PythonParser:
             'keyword_arguments': [],
         }
 
-        arguments = re.search(r'^\s*def \w*\((.*)\)(?:\s*->\s*\w*)?:\s*$', line)
+        arguments = re.search(r'^\s*def \w*\((.*)\)(?:\s*->\s*[\w\[\]]*)?:\s*$', line)
 
         if not arguments:
             return None
@@ -602,7 +602,7 @@ class PythonParser:
         regex = re.compile(r'^\s*(return|yield) (\w+)', re.MULTILINE)
         match = re.findall(regex, contents)
 
-        typed_return = re.search(r'\->\s*(\w*):\s*$', line)
+        typed_return = re.search(r'\->\s*([\w\[\]]*):\s*$', line)
 
         if len(match) == 0:
             return None
