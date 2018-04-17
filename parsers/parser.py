@@ -387,7 +387,8 @@ class PythonParser:
         """Process an individual variable.
 
         Determines programmatically what the assumed type of the variable is,
-        based on the initial assignment, or common naming conventions of the variable
+        based on the initial assignment, common naming conventions of the variable
+        or whether the variable is declared with Python 3.6 typing markup
 
         Arguments:
             variable {String} -- varibale definition line
@@ -406,8 +407,15 @@ class PythonParser:
             variable = pieces[0].strip()
             params['default'] = pieces[1].strip()
 
+        if ':' in variable:
+            pieces = variable.split(':')
+            variable = pieces[0].strip()
+            params['type'] = pieces[1].strip()
+
         params['name'] = variable
-        params['type'] = guess_type_from_value(params.get('default')) or guess_type_from_name(variable)
+
+        if params['type'] is None:
+            params['type'] = guess_type_from_value(params.get('default')) or guess_type_from_name(variable)
 
         return params
 
@@ -560,7 +568,7 @@ class PythonParser:
             'keyword_arguments': [],
         }
 
-        arguments = re.search(r'^\s*def \w*\((.*)\):\s*$', line)
+        arguments = re.search(r'^\s*def \w*\((.*)\)(?:\s*->\s*\w*)?:\s*$', line)
 
         if not arguments:
             return None
@@ -578,11 +586,12 @@ class PythonParser:
 
         return parsed_arguments
 
-    def parse_returns(self, contents):
+    def parse_returns(self, line, contents):
         """Find the first instances of returning in the definition.
 
         Parses through the whole definition for occurrances of the keyword `return`,
-        or `yield` and returns the first. Tries guess the type of the value.
+        or `yield` and returns the first. Tries guess the type of the value if the
+        return type is not hinted by `def fun() -> return_type:` typing.
 
         Arguments:
             contents {str} -- contents of the definition
@@ -593,12 +602,18 @@ class PythonParser:
         regex = re.compile(r'^\s*(return|yield) (\w+)', re.MULTILINE)
         match = re.findall(regex, contents)
 
-        if len(match) == 0:
+        typed_return = re.search(r'\->\s*(\w*):\s*$', line)
+
+        if len(match) == 0 and not typed_return:
             return None
 
         match = match[0]
         return_type = match[0] + 's'
-        return_value_type = guess_type_from_value(match[1])
+
+        if typed_return:
+            return_value_type = typed_return.group(1)
+        else:
+            return_value_type = guess_type_from_value(match[1])
 
         return (return_type, {'type': return_value_type})
 
@@ -653,7 +668,7 @@ class PythonParser:
         if arguments is not None:
             parsed_function.append(('arguments', arguments))
 
-        returns = self.parse_returns(contents)
+        returns = self.parse_returns(line, contents)
         if returns is not None:
             parsed_function.append(returns)
 
