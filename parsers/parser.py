@@ -604,7 +604,7 @@ class PythonParser:
 
         typed_return = re.search(r'\->\s*(\w*):\s*$', line)
 
-        if len(match) == 0 and not typed_return:
+        if len(match) == 0:
             return None
 
         match = match[0]
